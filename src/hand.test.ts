@@ -59,4 +59,22 @@ describe("evaluateHand", () => {
       expect(result.rankValues).toEqual([11, 3, 14]);
     });
   });
+
+  describe("three of a kind", () => {
+    it("should detect three of a kind", () => {
+      const result = evaluateHand(cards(["7h", "7d", "7s", "Kc", "2h"]));
+      expect(result.category).toBe("three-of-a-kind");
+    });
+
+    it("should return triplet first then kickers descending", () => {
+      const result = evaluateHand(cards(["9h", "9d", "9s", "Ac", "3h"]));
+      expect(result.category).toBe("three-of-a-kind");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["9", "9", "9", "A", "3"]);
+    });
+
+    it("should have correct rank values for tie-breaking", () => {
+      const result = evaluateHand(cards(["Qh", "Qd", "Qs", "Jc", "5h"]));
+      expect(result.rankValues).toEqual([12, 11, 5]);
+    });
+  });
 });

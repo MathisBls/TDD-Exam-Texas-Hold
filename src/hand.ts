@@ -53,6 +53,18 @@ export function evaluateHand(cards: Card[]): HandResult {
   const sortedKickers = sortByRankDesc(kickers);
   pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
 
+  if (triplet) {
+    const chosen5 = [...triplet, ...sortedKickers.slice(0, 2)];
+    return {
+      category: "three-of-a-kind",
+      chosen5,
+      rankValues: [
+        rankValue(triplet[0].rank),
+        ...sortedKickers.slice(0, 2).map((c) => rankValue(c.rank)),
+      ],
+    };
+  }
+
   if (pairs.length === 2) {
     const chosen5 = [...pairs[0], ...pairs[1], sortedKickers[0]];
     return {
