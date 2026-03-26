@@ -31,6 +31,23 @@ function sortByRankDesc(cards: Card[]): Card[] {
   return [...cards].sort((a, b) => rankValue(b.rank) - rankValue(a.rank));
 }
 
+function detectFlush(cards: Card[]): Card[] | null {
+  const bySuit = new Map<string, Card[]>();
+  for (const card of cards) {
+    const group = bySuit.get(card.suit) || [];
+    group.push(card);
+    bySuit.set(card.suit, group);
+  }
+
+  for (const [, group] of bySuit) {
+    if (group.length >= 5) {
+      return sortByRankDesc(group).slice(0, 5);
+    }
+  }
+
+  return null;
+}
+
 function detectStraight(cards: Card[]): Card[] | null {
   const sorted = sortByRankDesc(cards);
   const unique = sorted.filter(
@@ -89,7 +106,26 @@ export function evaluateHand(cards: Card[]): HandResult {
   const sortedKickers = sortByRankDesc(kickers);
   pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
 
+  if (triplet && pairs.length >= 1) {
+    const chosen5 = [...triplet, ...pairs[0]];
+    return {
+      category: "full-house",
+      chosen5,
+      rankValues: [rankValue(triplet[0].rank), rankValue(pairs[0][0].rank)],
+    };
+  }
+
+  const flush = detectFlush(cards);
   const straight = detectStraight(cards);
+
+  if (flush) {
+    return {
+      category: "flush",
+      chosen5: flush,
+      rankValues: flush.map((c) => rankValue(c.rank)),
+    };
+  }
+
   if (straight) {
     return {
       category: "straight",

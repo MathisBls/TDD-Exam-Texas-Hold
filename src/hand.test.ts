@@ -111,4 +111,49 @@ describe("evaluateHand", () => {
       expect(result.rankValues).toEqual([5]);
     });
   });
+
+  describe("flush", () => {
+    it("should detect a flush", () => {
+      const result = evaluateHand(cards(["Ah", "Jh", "9h", "6h", "4h"]));
+      expect(result.category).toBe("flush");
+    });
+
+    it("should return cards in descending rank order", () => {
+      const result = evaluateHand(cards(["4h", "Ah", "9h", "Jh", "6h"]));
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["A", "J", "9", "6", "4"]);
+    });
+
+    it("should have rank values for each card", () => {
+      const result = evaluateHand(cards(["Ah", "Jh", "9h", "6h", "4h"]));
+      expect(result.rankValues).toEqual([14, 11, 9, 6, 4]);
+    });
+
+    it("should beat a straight", () => {
+      const flush = evaluateHand(cards(["2h", "5h", "8h", "Jh", "Ah"]));
+      expect(flush.category).toBe("flush");
+    });
+  });
+
+  describe("full house", () => {
+    it("should detect a full house", () => {
+      const result = evaluateHand(cards(["7h", "7d", "7s", "Kc", "Kh"]));
+      expect(result.category).toBe("full-house");
+    });
+
+    it("should return triplet first then pair", () => {
+      const result = evaluateHand(cards(["3h", "3d", "3s", "Ac", "Ah"]));
+      expect(result.category).toBe("full-house");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["3", "3", "3", "A", "A"]);
+    });
+
+    it("should have rank values for triplet and pair", () => {
+      const result = evaluateHand(cards(["Qh", "Qd", "Qs", "9c", "9h"]));
+      expect(result.rankValues).toEqual([12, 9]);
+    });
+
+    it("should beat a flush", () => {
+      const result = evaluateHand(cards(["7h", "7d", "7s", "Kc", "Kh"]));
+      expect(result.category).toBe("full-house");
+    });
+  });
 });
