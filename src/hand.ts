@@ -196,7 +196,7 @@ export function evaluateHand(cards: Card[]): HandResult {
     };
   }
 
-  const sorted = sortByRankDesc(cards);
+  const sorted = sortByRankDesc(cards).slice(0, 5);
   return {
     category: "high-card",
     chosen5: sorted,
