@@ -13,13 +13,13 @@ Donne 5 cartes communes (board) et 2 cartes par joueur, le programme :
 
 - TypeScript
 - Vitest (test framework)
-- pnpm (package manager)
+- npm (package manager)
 
 ## Lancer les tests
 
 ```bash
-pnpm install
-pnpm test
+npm install
+npm test
 ```
 
 ## Input
