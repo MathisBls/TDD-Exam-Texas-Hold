@@ -1,0 +1,62 @@
+import { describe, it, expect } from "vitest";
+import { parseCard } from "./card";
+import { evaluateHand } from "./hand";
+
+function cards(strs: string[]) {
+  return strs.map(parseCard);
+}
+
+describe("evaluateHand", () => {
+  describe("high card", () => {
+    it("should detect a high card hand", () => {
+      const result = evaluateHand(cards(["Ah", "Kd", "9s", "5c", "2h"]));
+      expect(result.category).toBe("high-card");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["A", "K", "9", "5", "2"]);
+    });
+
+    it("should order cards by descending rank", () => {
+      const result = evaluateHand(cards(["3h", "7d", "2s", "Jc", "9h"]));
+      expect(result.category).toBe("high-card");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["J", "9", "7", "3", "2"]);
+    });
+  });
+
+  describe("one pair", () => {
+    it("should detect one pair", () => {
+      const result = evaluateHand(cards(["Ah", "Ad", "9s", "5c", "2h"]));
+      expect(result.category).toBe("one-pair");
+    });
+
+    it("should return pair first then kickers descending", () => {
+      const result = evaluateHand(cards(["7h", "7d", "Ks", "5c", "2h"]));
+      expect(result.category).toBe("one-pair");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["7", "7", "K", "5", "2"]);
+    });
+
+    it("should handle pair of aces", () => {
+      const result = evaluateHand(cards(["Ah", "Ad", "Ks", "Qc", "Jh"]));
+      expect(result.category).toBe("one-pair");
+      expect(result.rankValues[0]).toBe(14);
+    });
+  });
+
+  describe("two pair", () => {
+    it("should detect two pair", () => {
+      const result = evaluateHand(cards(["Ah", "Ad", "9s", "9c", "2h"]));
+      expect(result.category).toBe("two-pair");
+    });
+
+    it("should return higher pair first then lower pair then kicker", () => {
+      const result = evaluateHand(cards(["5h", "5d", "Ks", "Kc", "2h"]));
+      expect(result.category).toBe("two-pair");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["K", "K", "5", "5", "2"]);
+    });
+
+    it("should pick correct kicker", () => {
+      const result = evaluateHand(cards(["Jh", "Jd", "3s", "3c", "Ah"]));
+      expect(result.category).toBe("two-pair");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["J", "J", "3", "3", "A"]);
+      expect(result.rankValues).toEqual([11, 3, 14]);
+    });
+  });
+});
