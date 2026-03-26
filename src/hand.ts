@@ -106,6 +106,34 @@ export function evaluateHand(cards: Card[]): HandResult {
   const sortedKickers = sortByRankDesc(kickers);
   pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
 
+  const flush = detectFlush(cards);
+  const straight = detectStraight(cards);
+
+  if (flush && straight) {
+    const flushSuit = flush[0].suit;
+    const flushCards = cards.filter((c) => c.suit === flushSuit);
+    const straightFlush = detectStraight(flushCards);
+    if (straightFlush) {
+      return {
+        category: "straight-flush",
+        chosen5: straightFlush,
+        rankValues: [rankValue(straightFlush[0].rank)],
+      };
+    }
+  }
+
+  if (quad) {
+    const kicker = sortByRankDesc(
+      cards.filter((c) => c.rank !== quad![0].rank)
+    )[0];
+    const chosen5 = [...quad, kicker];
+    return {
+      category: "four-of-a-kind",
+      chosen5,
+      rankValues: [rankValue(quad[0].rank), rankValue(kicker.rank)],
+    };
+  }
+
   if (triplet && pairs.length >= 1) {
     const chosen5 = [...triplet, ...pairs[0]];
     return {
@@ -114,9 +142,6 @@ export function evaluateHand(cards: Card[]): HandResult {
       rankValues: [rankValue(triplet[0].rank), rankValue(pairs[0][0].rank)],
     };
   }
-
-  const flush = detectFlush(cards);
-  const straight = detectStraight(cards);
 
   if (flush) {
     return {

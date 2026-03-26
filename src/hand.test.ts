@@ -156,4 +156,55 @@ describe("evaluateHand", () => {
       expect(result.category).toBe("full-house");
     });
   });
+
+  describe("four of a kind", () => {
+    it("should detect four of a kind", () => {
+      const result = evaluateHand(cards(["7h", "7d", "7s", "7c", "2h"]));
+      expect(result.category).toBe("four-of-a-kind");
+    });
+
+    it("should return quads first then kicker", () => {
+      const result = evaluateHand(cards(["Jh", "Jd", "Js", "Jc", "Ah"]));
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["J", "J", "J", "J", "A"]);
+    });
+
+    it("should have rank values for quads and kicker", () => {
+      const result = evaluateHand(cards(["7h", "7d", "7s", "7c", "Ah"]));
+      expect(result.rankValues).toEqual([7, 14]);
+    });
+
+    it("should pick the best kicker", () => {
+      const result = evaluateHand(cards(["9h", "9d", "9s", "9c", "Kh"]));
+      expect(result.rankValues).toEqual([9, 13]);
+    });
+  });
+
+  describe("straight flush", () => {
+    it("should detect a straight flush", () => {
+      const result = evaluateHand(cards(["5h", "6h", "7h", "8h", "9h"]));
+      expect(result.category).toBe("straight-flush");
+    });
+
+    it("should return cards in descending order", () => {
+      const result = evaluateHand(cards(["5h", "6h", "7h", "8h", "9h"]));
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["9", "8", "7", "6", "5"]);
+    });
+
+    it("should detect royal flush as straight flush", () => {
+      const result = evaluateHand(cards(["10s", "Js", "Qs", "Ks", "As"]));
+      expect(result.category).toBe("straight-flush");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["A", "K", "Q", "J", "10"]);
+    });
+
+    it("should detect ace-low straight flush", () => {
+      const result = evaluateHand(cards(["Ah", "2h", "3h", "4h", "5h"]));
+      expect(result.category).toBe("straight-flush");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["5", "4", "3", "2", "A"]);
+    });
+
+    it("should have highest card rank value for tie-breaking", () => {
+      const result = evaluateHand(cards(["5h", "6h", "7h", "8h", "9h"]));
+      expect(result.rankValues).toEqual([9]);
+    });
+  });
 });
