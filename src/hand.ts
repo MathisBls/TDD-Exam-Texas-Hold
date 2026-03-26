@@ -17,6 +17,13 @@ export type HandResult = {
   rankValues: number[];
 };
 
+type GroupAnalysis = {
+  quad: Card[] | null;
+  triplet: Card[] | null;
+  pairs: Card[][];
+  kickers: Card[];
+};
+
 function groupByRank(cards: Card[]): Map<string, Card[]> {
   const groups = new Map<string, Card[]>();
   for (const card of cards) {
@@ -29,6 +36,30 @@ function groupByRank(cards: Card[]): Map<string, Card[]> {
 
 function sortByRankDesc(cards: Card[]): Card[] {
   return [...cards].sort((a, b) => rankValue(b.rank) - rankValue(a.rank));
+}
+
+function analyzeGroups(cards: Card[]): GroupAnalysis {
+  const groups = groupByRank(cards);
+  const pairs: Card[][] = [];
+  let triplet: Card[] | null = null;
+  let quad: Card[] | null = null;
+  const kickers: Card[] = [];
+
+  for (const [, group] of groups) {
+    if (group.length === 4) {
+      quad = group;
+    } else if (group.length === 3) {
+      triplet = group;
+    } else if (group.length === 2) {
+      pairs.push(group);
+    } else {
+      kickers.push(...group);
+    }
+  }
+
+  pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
+
+  return { quad, triplet, pairs, kickers: sortByRankDesc(kickers) };
 }
 
 function detectFlush(cards: Card[]): Card[] | null {
@@ -48,11 +79,30 @@ function detectFlush(cards: Card[]): Card[] | null {
   return null;
 }
 
-function detectStraight(cards: Card[]): Card[] | null {
-  const sorted = sortByRankDesc(cards);
-  const unique = sorted.filter(
+function removeDuplicateRanks(sorted: Card[]): Card[] {
+  return sorted.filter(
     (c, i, arr) => i === 0 || c.rank !== arr[i - 1].rank
   );
+}
+
+function detectWheel(unique: Card[]): Card[] | null {
+  if (unique[0].rank !== "A") return null;
+
+  const low4 = unique.slice(-4);
+  const isWheel =
+    low4[0]?.rank === "5" &&
+    low4[1]?.rank === "4" &&
+    low4[2]?.rank === "3" &&
+    low4[3]?.rank === "2";
+
+  if (!isWheel) return null;
+
+  return [...low4, unique[0]];
+}
+
+function detectStraight(cards: Card[]): Card[] | null {
+  const sorted = sortByRankDesc(cards);
+  const unique = removeDuplicateRanks(sorted);
 
   if (unique.length < 5) return null;
 
@@ -65,141 +115,101 @@ function detectStraight(cards: Card[]): Card[] | null {
     }
   }
 
-  if (
-    unique[0].rank === "A" &&
-    unique[unique.length - 4]?.rank === "5" &&
-    unique[unique.length - 3]?.rank === "4" &&
-    unique[unique.length - 2]?.rank === "3" &&
-    unique[unique.length - 1]?.rank === "2"
-  ) {
-    return [
-      unique[unique.length - 4],
-      unique[unique.length - 3],
-      unique[unique.length - 2],
-      unique[unique.length - 1],
-      unique[0],
-    ];
-  }
+  return detectWheel(unique);
+}
 
-  return null;
+function detectStraightFlush(cards: Card[]): Card[] | null {
+  const flush = detectFlush(cards);
+  if (!flush) return null;
+
+  const straight = detectStraight(cards);
+  if (!straight) return null;
+
+  const flushSuit = flush[0].suit;
+  const flushCards = cards.filter((c) => c.suit === flushSuit);
+  return detectStraight(flushCards);
+}
+
+function toRankValues(cards: Card[]): number[] {
+  return cards.map((c) => rankValue(c.rank));
+}
+
+function makeResult(
+  category: HandCategory,
+  chosen5: Card[],
+  rankValues: number[]
+): HandResult {
+  return { category, chosen5, rankValues };
 }
 
 export function evaluateHand(cards: Card[]): HandResult {
-  const groups = groupByRank(cards);
-  const pairs: Card[][] = [];
-  let triplet: Card[] | null = null;
-  let quad: Card[] | null = null;
-  const kickers: Card[] = [];
+  const { quad, triplet, pairs, kickers } = analyzeGroups(cards);
 
-  for (const [, group] of groups) {
-    if (group.length === 4) {
-      quad = group;
-    } else if (group.length === 3) {
-      triplet = group;
-    } else if (group.length === 2) {
-      pairs.push(group);
-    } else {
-      kickers.push(...group);
-    }
-  }
-
-  const sortedKickers = sortByRankDesc(kickers);
-  pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
-
-  const flush = detectFlush(cards);
-  const straight = detectStraight(cards);
-
-  if (flush && straight) {
-    const flushSuit = flush[0].suit;
-    const flushCards = cards.filter((c) => c.suit === flushSuit);
-    const straightFlush = detectStraight(flushCards);
-    if (straightFlush) {
-      return {
-        category: "straight-flush",
-        chosen5: straightFlush,
-        rankValues: [rankValue(straightFlush[0].rank)],
-      };
-    }
+  const straightFlush = detectStraightFlush(cards);
+  if (straightFlush) {
+    return makeResult("straight-flush", straightFlush, [
+      rankValue(straightFlush[0].rank),
+    ]);
   }
 
   if (quad) {
-    const kicker = sortByRankDesc(
-      cards.filter((c) => c.rank !== quad![0].rank)
+    const bestKicker = sortByRankDesc(
+      cards.filter((c) => c.rank !== quad[0].rank)
     )[0];
-    const chosen5 = [...quad, kicker];
-    return {
-      category: "four-of-a-kind",
-      chosen5,
-      rankValues: [rankValue(quad[0].rank), rankValue(kicker.rank)],
-    };
+    return makeResult("four-of-a-kind", [...quad, bestKicker], [
+      rankValue(quad[0].rank),
+      rankValue(bestKicker.rank),
+    ]);
   }
 
   if (triplet && pairs.length >= 1) {
-    const chosen5 = [...triplet, ...pairs[0]];
-    return {
-      category: "full-house",
-      chosen5,
-      rankValues: [rankValue(triplet[0].rank), rankValue(pairs[0][0].rank)],
-    };
+    return makeResult(
+      "full-house",
+      [...triplet, ...pairs[0]],
+      [rankValue(triplet[0].rank), rankValue(pairs[0][0].rank)]
+    );
   }
 
+  const flush = detectFlush(cards);
   if (flush) {
-    return {
-      category: "flush",
-      chosen5: flush,
-      rankValues: flush.map((c) => rankValue(c.rank)),
-    };
+    return makeResult("flush", flush, toRankValues(flush));
   }
 
+  const straight = detectStraight(cards);
   if (straight) {
-    return {
-      category: "straight",
-      chosen5: straight,
-      rankValues: [rankValue(straight[0].rank)],
-    };
+    return makeResult("straight", straight, [rankValue(straight[0].rank)]);
   }
 
   if (triplet) {
-    const chosen5 = [...triplet, ...sortedKickers.slice(0, 2)];
-    return {
-      category: "three-of-a-kind",
-      chosen5,
-      rankValues: [
-        rankValue(triplet[0].rank),
-        ...sortedKickers.slice(0, 2).map((c) => rankValue(c.rank)),
-      ],
-    };
+    const topKickers = kickers.slice(0, 2);
+    return makeResult(
+      "three-of-a-kind",
+      [...triplet, ...topKickers],
+      [rankValue(triplet[0].rank), ...toRankValues(topKickers)]
+    );
   }
 
   if (pairs.length === 2) {
-    const chosen5 = [...pairs[0], ...pairs[1], sortedKickers[0]];
-    return {
-      category: "two-pair",
-      chosen5,
-      rankValues: [
+    return makeResult(
+      "two-pair",
+      [...pairs[0], ...pairs[1], kickers[0]],
+      [
         rankValue(pairs[0][0].rank),
         rankValue(pairs[1][0].rank),
-        rankValue(sortedKickers[0].rank),
-      ],
-    };
+        rankValue(kickers[0].rank),
+      ]
+    );
   }
 
   if (pairs.length === 1) {
-    const chosen5 = [...pairs[0], ...sortedKickers.slice(0, 3)];
-    return {
-      category: "one-pair",
-      chosen5,
-      rankValues: [
-        rankValue(pairs[0][0].rank),
-        ...sortedKickers.slice(0, 3).map((c) => rankValue(c.rank)),
-      ],
-    };
+    const topKickers = kickers.slice(0, 3);
+    return makeResult(
+      "one-pair",
+      [...pairs[0], ...topKickers],
+      [rankValue(pairs[0][0].rank), ...toRankValues(topKickers)]
+    );
   }
 
   const sorted = sortByRankDesc(cards).slice(0, 5);
-  return {
-    category: "high-card",
-    chosen5: sorted,
-    rankValues: sorted.map((c) => rankValue(c.rank)),
-  };
+  return makeResult("high-card", sorted, toRankValues(sorted));
 }
