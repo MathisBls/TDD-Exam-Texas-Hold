@@ -77,4 +77,38 @@ describe("evaluateHand", () => {
       expect(result.rankValues).toEqual([12, 11, 5]);
     });
   });
+
+  describe("straight", () => {
+    it("should detect a straight", () => {
+      const result = evaluateHand(cards(["5h", "6d", "7s", "8c", "9h"]));
+      expect(result.category).toBe("straight");
+    });
+
+    it("should return cards in descending order", () => {
+      const result = evaluateHand(cards(["5h", "6d", "7s", "8c", "9h"]));
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["9", "8", "7", "6", "5"]);
+    });
+
+    it("should detect ace-high straight", () => {
+      const result = evaluateHand(cards(["10c", "Jd", "Qh", "Ks", "Ac"]));
+      expect(result.category).toBe("straight");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["A", "K", "Q", "J", "10"]);
+    });
+
+    it("should detect ace-low straight (wheel)", () => {
+      const result = evaluateHand(cards(["Ac", "2d", "3h", "4s", "5c"]));
+      expect(result.category).toBe("straight");
+      expect(result.chosen5.map((c) => c.rank)).toEqual(["5", "4", "3", "2", "A"]);
+    });
+
+    it("should use highest card rank value for tie-breaking", () => {
+      const result = evaluateHand(cards(["5h", "6d", "7s", "8c", "9h"]));
+      expect(result.rankValues).toEqual([9]);
+    });
+
+    it("should use 5 as rank value for wheel", () => {
+      const result = evaluateHand(cards(["Ac", "2d", "3h", "4s", "5c"]));
+      expect(result.rankValues).toEqual([5]);
+    });
+  });
 });

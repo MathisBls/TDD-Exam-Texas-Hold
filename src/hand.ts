@@ -31,6 +31,42 @@ function sortByRankDesc(cards: Card[]): Card[] {
   return [...cards].sort((a, b) => rankValue(b.rank) - rankValue(a.rank));
 }
 
+function detectStraight(cards: Card[]): Card[] | null {
+  const sorted = sortByRankDesc(cards);
+  const unique = sorted.filter(
+    (c, i, arr) => i === 0 || c.rank !== arr[i - 1].rank
+  );
+
+  if (unique.length < 5) return null;
+
+  for (let i = 0; i <= unique.length - 5; i++) {
+    const slice = unique.slice(i, i + 5);
+    const high = rankValue(slice[0].rank);
+    const low = rankValue(slice[4].rank);
+    if (high - low === 4) {
+      return slice;
+    }
+  }
+
+  if (
+    unique[0].rank === "A" &&
+    unique[unique.length - 4]?.rank === "5" &&
+    unique[unique.length - 3]?.rank === "4" &&
+    unique[unique.length - 2]?.rank === "3" &&
+    unique[unique.length - 1]?.rank === "2"
+  ) {
+    return [
+      unique[unique.length - 4],
+      unique[unique.length - 3],
+      unique[unique.length - 2],
+      unique[unique.length - 1],
+      unique[0],
+    ];
+  }
+
+  return null;
+}
+
 export function evaluateHand(cards: Card[]): HandResult {
   const groups = groupByRank(cards);
   const pairs: Card[][] = [];
@@ -52,6 +88,15 @@ export function evaluateHand(cards: Card[]): HandResult {
 
   const sortedKickers = sortByRankDesc(kickers);
   pairs.sort((a, b) => rankValue(b[0].rank) - rankValue(a[0].rank));
+
+  const straight = detectStraight(cards);
+  if (straight) {
+    return {
+      category: "straight",
+      chosen5: straight,
+      rankValues: [rankValue(straight[0].rank)],
+    };
+  }
 
   if (triplet) {
     const chosen5 = [...triplet, ...sortedKickers.slice(0, 2)];
